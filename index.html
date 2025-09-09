@@ -391,7 +391,7 @@ body {
         </div>
       </div>
       <div class="messages" id="messages">
-        <p class="receive">Hello</p>
+        <p class="receive">Hi — I’m Bryan’s AI guide. Ask me anything about Bryan’s projects, skills, or story, and I’ll do my best to help.</p>
       </div>
       <form class="input-area" id="chat-form">
         <input type="text" id="chat-input" placeholder="Message" aria-label="Message" autocomplete="off" />
@@ -402,6 +402,19 @@ body {
   <script>
     (function() {
       'use strict';
+
+      // Custom system prompt and generation parameters
+      const SYSTEM_PROMPT = [
+        'You are an AI assistant representing Bryan. Answer only about Bryan—his background, skills, projects, and work.',
+        'Be concise, honest, and helpful. If you do not know, say so and suggest how to find the answer.',
+        'Use a friendly, professional tone. Avoid sharing private data or making assumptions.',
+      ].join(' ');
+
+      const GENERATION_CONFIG = {
+        temperature: 0.6,
+        topP: 0.9,
+        maxOutputTokens: 512
+      };
 
       function appendMessage(messagesEl, text, type) {
         if (!messagesEl || typeof text !== 'string') return;
@@ -448,7 +461,11 @@ body {
             const resp = await fetch('/api/gemini-chat', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ messages: history })
+              body: JSON.stringify({
+                messages: history,
+                systemPrompt: SYSTEM_PROMPT,
+                generationConfig: GENERATION_CONFIG
+              })
             });
             if (!resp.ok) {
               typing.textContent = '...';

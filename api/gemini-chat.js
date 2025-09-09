@@ -20,7 +20,7 @@ export default async function handler(req) {
       return new Response(JSON.stringify({ error: 'Server is not configured with GEMINI_API_KEY' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
 
-    const { messages, model } = await req.json();
+    const { messages, model, systemPrompt, generationConfig } = await req.json();
     const contents = mapToGeminiContents(messages);
     if (!contents.length) {
       return new Response(JSON.stringify({ error: 'messages array is required' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
@@ -29,10 +29,21 @@ export default async function handler(req) {
     const targetModel = model || 'models/gemini-1.5-flash';
     const url = `https://generativelanguage.googleapis.com/v1beta/${targetModel}:generateContent?key=${apiKey}`;
 
+    const requestBody = { contents };
+    if (systemPrompt && typeof systemPrompt === 'string' && systemPrompt.trim().length > 0) {
+      requestBody.systemInstruction = {
+        role: 'system',
+        parts: [{ text: systemPrompt }]
+      };
+    }
+    if (generationConfig && typeof generationConfig === 'object') {
+      requestBody.generationConfig = generationConfig;
+    }
+
     const upstream = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents })
+      body: JSON.stringify(requestBody)
     });
 
     if (!upstream.ok) {
