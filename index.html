@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chatbot Bubbles</title>
+  <style>
+:root {
+      --send-bg: #0A84FF; /* iOS System Blue */
+      --send-color: #FFFFFF;
+      --receive-bg: #2C2C2E; /* iOS dark secondary background */
+      --receive-text: rgba(255, 255, 255, 0.92);
+      --page-background: transparent;
+      --saturation: 150%;
+}
+
+body {
+      font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-size: 17px; /* iOS body */
+      font-weight: 400;
+      letter-spacing: 0;
+      line-height: 1.4;
+      color: rgba(255, 255, 255, 0.92);
+      margin: 0;
+  background-color: var(--page-background);
+}
+
+    .container {
+      position: static;
+      width: 100%;
+      max-width: 1200px;
+      margin: 48px auto;
+      padding: 0 16px;
+      display: flex;
+      justify-content: flex-end;
+      z-index: 1;
+    }
+
+    .glass-panel {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: rgba(255, 255, 255, 0.08);
+      /* Liquid glass morphism: use displacement SVG filter where supported */
+      backdrop-filter: blur(2px) url(#glassDisp) saturate(var(--saturation));
+      -webkit-backdrop-filter: blur(8px) saturate(var(--saturation));
+      border-radius: 32px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      padding: 16px;
+      box-shadow:
+        /* crisp outer outline */
+        0 0 0 1px rgba(255, 255, 255, 0.28),
+        /* soft drop shadow */
+        0 14px 34px rgba(0, 0, 0, 0.28),
+        0 6px 16px rgba(0, 0, 0, 0.22),
+        /* crisp inner ring */
+        inset 0 0 0 1px rgba(255, 255, 255, 0.18),
+        /* inner bevel shadows */
+        inset 0 1px 0 rgba(255, 255, 255, 0.16),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.28),
+        inset 6px 6px 12px rgba(0, 0, 0, 0.18),
+        inset -6px -6px 12px rgba(255, 255, 255, 0.05);
+      width: 320px;
+      height: 520px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow: hidden;
+      background-clip: padding-box;
+      isolation: isolate;
+      transform-origin: bottom right;
+      transition:
+        width 280ms cubic-bezier(.34,1.56,.64,1),
+        height 280ms cubic-bezier(.34,1.56,.64,1),
+        padding 220ms cubic-bezier(.34,1.56,.64,1),
+        border-radius 0ms linear;
+      will-change: width, height, padding;
+    }
+
+    /* Bevel overlays */
+    .glass-panel:not(.is-minimized)::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      /* crisp top and left edge highlights (rectangle) */
+      background:
+        /* top line */
+        linear-gradient(to bottom, rgba(255,255,255,0.42), rgba(255,255,255,0.06)) 0 0 / 100% 6px no-repeat,
+        /* left line */
+        linear-gradient(to right, rgba(255,255,255,0.32), rgba(255,255,255,0.06)) 0 0 / 6px 100% no-repeat;
+      mix-blend-mode: screen;
+    }
+    .glass-panel:not(.is-minimized)::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      /* crisp bottom and right edge highlights (rectangle) */
+      background:
+        /* bottom line */
+        linear-gradient(to top, rgba(255,255,255,0.28), rgba(255,255,255,0.06)) 0 100% / 100% 6px no-repeat,
+        /* right line */
+        linear-gradient(to left, rgba(255,255,255,0.24), rgba(255,255,255,0.06)) 100% 0 / 6px 100% no-repeat;
+      box-shadow: inset 0 -18px 28px rgba(0, 0, 0, 0.28);
+      mix-blend-mode: screen;
+    }
+
+    /* Softer circular shine for minimized bubble (keep previous aesthetic) */
+    .glass-panel.is-minimized {
+      box-shadow:
+        0 12px 28px rgba(0, 0, 0, 0.26),
+        inset 0 1px 0 rgba(255, 255, 255, 0.14),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.22),
+        inset 4px 4px 10px rgba(0, 0, 0, 0.16),
+        inset -4px -4px 10px rgba(255, 255, 255, 0.04);
+    }
+    .glass-panel.is-minimized::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      background:
+        radial-gradient(85px 70px at 30% 24%, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.14) 35%, rgba(255,255,255,0) 62%);
+      mix-blend-mode: screen;
+    }
+    .glass-panel.is-minimized::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      background:
+        radial-gradient(95px 80px at 72% 74%, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.10) 28%, rgba(255,255,255,0) 58%);
+      mix-blend-mode: screen;
+    }
+
+    .messages {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      flex: 1;
+      padding: 8px;
+      width: 100%;
+      max-width: 100%;
+      /* Hide scrollbar (Firefox/IE) */
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    /* Hide scrollbar (WebKit) */
+    .messages::-webkit-scrollbar { display: none; }
+
+    /* Minimized state */
+    .glass-panel.is-minimized {
+      width: 72px;
+      height: 72px;
+      border-radius: 9999px;
+      padding: 0;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .glass-panel.is-minimized .messages,
+    .glass-panel.is-minimized .input-area,
+    .glass-panel.is-minimized .close-btn { display: none !important; }
+    .glass-panel.is-minimized .chat-header { display: none !important; }
+
+    /* Header */
+    .chat-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 4px 4px 10px 4px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      min-height: 44px;
+    }
+    .chat-header-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .chat-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 9999px;
+      object-fit: cover;
+      background: #2C2C2E;
+      border: 1px solid rgba(255,255,255,0.12);
+      flex-shrink: 0;
+    }
+    .chat-title {
+      font-size: 17px;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.95);
+      letter-spacing: 0;
+    }
+    /* Close (minimize) button */
+    .close-btn {
+      width: 28px;
+      height: 28px;
+      border: none;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.18);
+      color: #fff;
+      font-size: 18px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      backdrop-filter: blur(6px) saturate(140%);
+      -webkit-backdrop-filter: blur(6px) saturate(140%);
+      z-index: 2;
+    }
+
+    .input-area {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 8px;
+      width: 100%;
+      flex-shrink: 0;
+    }
+
+    .input-area input[type="text"] {
+      flex: 1;
+      font-size: 17px;
+      padding: 12px 14px;
+      min-height: 44px; /* iOS min touch target */
+      border-radius: 24px;
+      border: 1px solid #3A3A3C;
+      outline: none;
+      background: #1C1C1E;
+      color: rgba(255, 255, 255, 0.95);
+      width: 100%;
+      min-width: 0;
+    }
+    .input-area input[type="text"]::placeholder { color: rgba(235, 235, 245, 0.6); }
+
+    .input-area button[type="submit"] {
+      font-size: 17px;
+      padding: 0 16px;
+      min-height: 44px; /* iOS min touch target */
+      border-radius: 24px;
+      border: none;
+      background: var(--send-bg);
+      color: #fff;
+      cursor: pointer;
+    }
+
+    p {
+      max-width: calc(100% - 56px);
+      word-wrap: break-word;
+      word-break: break-word;
+      white-space: pre-wrap;
+      margin: 4px 0;
+      line-height: 1.4;
+      font-size: 17px; /* iOS body */
+      position: relative;
+      padding: 12px 16px;
+      border-radius: 24px;
+      box-sizing: border-box;
+    }
+
+    p:before,
+    p:after {
+    content: "";
+		position: absolute;
+    bottom: 0;
+    height: 25px;
+}
+
+.send {
+	color: var(--send-color); 
+	background: var(--send-bg);
+	align-self: flex-end;
+      margin: 4px 0;
+    }
+		
+    .send:before {
+		right: -7px;
+    width: 20px;
+    background-color: var(--send-bg);
+		border-bottom-left-radius: 16px 14px;
+	}
+
+    .send:after {
+		right: -26px;
+    width: 26px;
+    background-color: var(--page-background);
+		border-bottom-left-radius: 10px;
+	}
+
+.receive {
+	background: var(--receive-bg);
+      color: var(--receive-text);
+  align-self: flex-start;
+      margin: 4px 0;
+    }
+		
+    .receive:before {
+		left: -7px;
+    width: 20px;
+    background-color: var(--receive-bg);
+		border-bottom-right-radius: 16px 14px;
+	}
+
+    .receive:after {
+		left: -26px;
+    width: 26px;
+    background-color: var(--page-background);
+		border-bottom-right-radius: 10px;
+	}
+
+    /* Remove old rounded tail pieces */
+    .send:before,
+    .receive:before { content: none; display: none; }
+
+    /* Remove all tails completely */
+    .send:before, .send:after, .receive:before, .receive:after { content: none !important; display: none !important; }
+
+    /* ##IRRELEVANT CODE## */
+    html, body { min-height: 100vh; }
+    html {
+      background: url('images/1.jpg') center center / cover no-repeat fixed;
+      background-color: #000000; /* fallback */
+    }
+    /* ##IRRELEVANT CODE## */
+  </style>
+</head>
+<body>
+  <!-- Hidden Liquid Glass SVG filter definition (off-screen) -->
+  <div style="position:absolute;top:-999px;left:-999px">
+    <svg id="effectSvg" width="800" height="152" viewBox="0 0 800 152" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+      <!-- Responsive noise-based displacement filter covering entire target bounds -->
+      <filter id="glassDisp" filterUnits="objectBoundingBox" primitiveUnits="objectBoundingBox" x="0%" y="0%" width="100%" height="100%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7" stitchTiles="stitch" result="noise"/>
+        <feGaussianBlur in="noise" stdDeviation="0.35" result="blur"/>
+        <feDisplacementMap in="SourceGraphic" in2="blur" scale="12" xChannelSelector="R" yChannelSelector="G"/>
+      </filter>
+
+      <filter id="displacementFilter4" primitiveUnits="userSpaceOnUse" x="0" y="0" width="800" height="152">
+        <feImage href="data:image/svg+xml,%3Csvg width='800' height='152' viewBox='0 0 800 152' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='200' y='38' width='400' height='76' rx='47' fill='%230001' /%3E%3Crect x='200' y='38' width='400' height='76' rx='47' fill='%23FFF' style='filter:blur(5px)' /%3E%3C/svg%3E" x="0" y="0" width="800" height="152" result="thing9" id="thing9" />
+        <feImage href="data:image/svg+xml,%3Csvg width='800' height='152' viewBox='0 0 800 152' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='200' y='38' width='400' height='76' rx='47' fill='%23FFF1' style='filter:blur(15px)' /%3E%3C/svg%3E" x="0" y="0" width="800" height="152" result="thing0" id="thing0" />
+        <feImage href="data:image/svg+xml,%3Csvg width='800' height='152' viewBox='0 0 800 152' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='200' y='38' width='400' height='76' rx='47' fill='%23000' /%3E%3C/svg%3E" x="0" y="0" width="800" height="152" result="thing1" id="thing1" />
+        <feImage href="data:image/svg+xml,%3Csvg width='800' height='152' viewBox='0 0 800 152' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3ClinearGradient id='gradient1' x1='0%25' y1='0%25' x2='100%25' y2='0%25'%3E%3Cstop offset='0%25' stop-color='%23000'/%3E%3Cstop offset='100%25' stop-color='%2300F'/%3E%3C/linearGradient%3E%3ClinearGradient id='gradient2' x1='0%25' y1='0%25' x2='0%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23000'/%3E%3Cstop offset='100%25' stop-color='%230F0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect x='0' y='0' width='800' height='152' rx='47' fill='%237F7F7F' /%3E%3Crect x='200' y='38' width='400' height='76' rx='47' fill='%23000' /%3E%3Crect x='200' y='38' width='400' height='76' rx='47' fill='url(%23gradient1)' style='mix-blend-mode: screen' /%3E%3Crect x='200' y='38' width='400' height='76' rx='47' fill='url(%23gradient2)' style='mix-blend-mode: screen' /%3E%3Crect x='200' y='38' width='400' height='76' rx='47' fill='%237F7F7FBB' style='filter:blur(5px)' /%3E%3C/svg%3E" x="0" y="0" width="800" height="152" result="thing2" id="thing2" />
+        <feGaussianBlur stdDeviation="0.7" in="SourceGraphic" result="preblur" />
+        <feDisplacementMap in2="thing2" in="preblur" scale="-148" xChannelSelector="B" yChannelSelector="G" />
+        <feColorMatrix type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="disp1" />
+        <feDisplacementMap in2="thing2" in="preblur" scale="-150" xChannelSelector="B" yChannelSelector="G" />
+        <feColorMatrix type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="disp2" />
+        <feDisplacementMap in2="thing2" in="preblur" scale="-152" xChannelSelector="B" yChannelSelector="G" />
+        <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="disp3" />
+        <feBlend in2="disp2" mode="screen"/>
+        <feBlend in2="thing0" mode="screen"/>
+        <feBlend in2="thing9" mode="multiply"/>
+        <feComposite in2="thing1" operator="in"/>
+        <feOffset dx="43" dy="43"/>
+      </filter>
+    </svg>
+  </div>
+  <div class="container">
+    <section class="glass-panel" id="chat-panel">
+      <div class="chat-header">
+        <button class="close-btn" id="close-btn" aria-label="Minimize chat" title="Minimize" type="button">×</button>
+        <div class="chat-header-info">
+          <img class="chat-avatar" src="images/1.jpg" alt="Avatar" onerror="this.style.display='none'" />
+          <div class="chat-title">Bryan's Chatbot</div>
+        </div>
+      </div>
+      <div class="messages" id="messages">
+        <p class="receive">Hello</p>
+      </div>
+      <form class="input-area" id="chat-form">
+        <input type="text" id="chat-input" placeholder="Message" aria-label="Message" autocomplete="off" />
+        <button type="submit" aria-label="Send message">Send</button>
+      </form>
+    </section>
+  </div>
+  <script>
+    (function() {
+      'use strict';
+
+      function appendMessage(messagesEl, text, type) {
+        if (!messagesEl || typeof text !== 'string') return;
+        const para = document.createElement('p');
+        para.className = type === 'send' ? 'send' : 'receive';
+        para.textContent = text;
+        messagesEl.appendChild(para);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+
+      document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('chat-form');
+        const input = document.getElementById('chat-input');
+        const messages = document.getElementById('messages');
+        const panel = document.getElementById('chat-panel');
+        const closeBtn = document.getElementById('close-btn');
+        const sendBtn = form ? form.querySelector('button[type="submit"]') : null;
+
+        // Maintain conversation history for Gemini
+        const history = [];
+
+        if (!form || !input || !messages) return;
+
+        form.addEventListener('submit', async function(e) {
+          e.preventDefault();
+          const text = input.value.trim();
+          if (text === '') return;
+          // Push user message
+          history.push({ role: 'user', content: text });
+          appendMessage(messages, text, 'send');
+          input.value = '';
+          // Show typing indicator
+          const typing = document.createElement('p');
+          typing.className = 'receive';
+          typing.textContent = '...';
+          messages.appendChild(typing);
+          messages.scrollTop = messages.scrollHeight;
+
+          if (sendBtn) sendBtn.disabled = true;
+          input.disabled = true;
+
+          // Call Vercel Edge Function with full history
+          try {
+            const resp = await fetch('/api/gemini-chat', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ messages: history })
+            });
+            if (!resp.ok) {
+              typing.textContent = '...';
+              // Keep placeholder on error
+              if (sendBtn) sendBtn.disabled = false;
+              input.disabled = false;
+              return;
+            }
+            const data = await resp.json();
+            const reply = (data && data.reply) ? data.reply : '...';
+            // Replace typing with reply
+            typing.textContent = reply;
+            // Push assistant reply
+            history.push({ role: 'assistant', content: reply });
+            if (sendBtn) sendBtn.disabled = false;
+            input.disabled = false;
+            input.focus();
+          } catch (_) {
+            typing.textContent = '...';
+            if (sendBtn) sendBtn.disabled = false;
+            input.disabled = false;
+          }
+        });
+
+        // Optional: focus input on load
+        input.focus();
+
+        // Minimize to circle
+        if (closeBtn && panel) {
+          closeBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            panel.classList.add('is-minimized');
+          }, { passive: true });
+
+          // Restore on click of the bubble
+          panel.addEventListener('click', function(e) {
+            // Only when minimized
+            if (!panel.classList.contains('is-minimized')) return;
+            panel.classList.remove('is-minimized');
+          }, { passive: true });
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
+
+
